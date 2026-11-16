@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#faf7f2">
+  <meta name="description" content="Подберите рецепт из продуктов, которые уже есть у вас дома.">
+  <title>Что приготовить? — рецепты из того, что есть</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles-1.css">
+</head>
+<body>
+  <main class="container">
+    <header class="site-header">
+      <span class="eyebrow">Вкусные идеи без лишних покупок</span>
+      <h1>Что приготовить?</h1>
+      <p>Напишите, что есть в холодильнике — подберём блюдо на сегодня.</p>
+    </header>
+
+    <section class="input-section" aria-labelledby="ingredients-heading">
+      <label class="input-label" id="ingredients-heading" for="ingredient-input">Что есть под рукой?</label>
+      <div class="tags-container" id="tags-container" aria-live="polite"></div>
+      <form class="input-row" id="ingredient-form">
+        <input id="ingredient-input" type="text" placeholder="Например: яйца, сыр, помидоры…" autocomplete="off">
+        <button class="btn btn-primary" type="submit">Добавить</button>
+      </form>
+      <div class="quick-add">
+        <p class="quick-add-title">Быстрый выбор</p>
+        <div class="quick-tags" id="quick-tags"></div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" id="search-btn" type="button" disabled>Найти рецепты</button>
+        <button class="btn btn-secondary" id="clear-btn" type="button">Очистить</button>
+      </div>
+    </section>
+
+    <section id="results-area" aria-live="polite">
+      <div class="empty-state">
+        <div class="empty-illustration" aria-hidden="true">🥗</div>
+        <h2>Начнём с того, что есть дома</h2>
+        <p>Добавьте продукты, и здесь появятся подходящие рецепты.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>Прототип «Что приготовить» <span aria-hidden="true">·</span> Все рецепты — офлайн</footer>
+
+  <div class="modal-overlay" id="modal-overlay" aria-hidden="true">
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-header">
+        <h2 id="modal-title"></h2>
+        <button class="modal-close" id="modal-close" type="button" aria-label="Закрыть рецепт">×</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+    </section>
+  </div>
+
+  <script>
+    const RECIPES = [
+      { id: 1, title: 'Классический омлет', emoji: '🍳', time: 10, servings: 1, ingredients: ['яйца', 'молоко', 'соль', 'масло'], steps: ['Взбейте яйца с молоком и щепоткой соли.', 'Разогрейте сковороду с маслом.', 'Вылейте смесь и готовьте на среднем огне 3–4 минуты.'] },
+      { id: 2, title: 'Жареная картошка с луком', emoji: '🥔', time: 30, servings: 2, ingredients: ['картофель', 'лук', 'масло', 'соль'], steps: ['Нарежьте картофель брусочками, лук — полукольцами.', 'Жарьте картофель на разогретом масле 15–20 минут.', 'Добавьте лук и соль, готовьте ещё 5–7 минут.'] },
+      { id: 3, title: 'Паста с сыром и яйцом', emoji: '🍝', time: 20, servings: 2, ingredients: ['макароны', 'яйца', 'сыр', 'масло', 'соль'], steps: ['Отварите макароны в подсоленной воде.', 'Смешайте яйца с натёртым сыром.', 'Добавьте смесь к горячим макаронам, быстро перемешайте и подавайте.'] },
+      { id: 4, title: 'Салат из огурцов и помидоров', emoji: '🥗', time: 10, servings: 2, ingredients: ['огурцы', 'помидоры', 'лук', 'масло', 'соль'], steps: ['Нарежьте овощи и лук.', 'Смешайте в миске, заправьте маслом и посолите.'] },
+      { id: 5, title: 'Яичница с помидорами', emoji: '🍅', time: 12, servings: 1, ingredients: ['яйца', 'помидоры', 'масло', 'соль'], steps: ['Нарежьте помидоры и обжарьте на масле 2–3 минуты.', 'Разбейте сверху яйца, посолите и готовьте до желаемой степени.'] },
+      { id: 6, title: 'Картофельное пюре', emoji: '🥣', time: 30, servings: 3, ingredients: ['картофель', 'молоко', 'масло', 'соль'], steps: ['Очистите картофель, нарежьте и отварите до мягкости.', 'Слейте воду, разомните картофель.', 'Добавьте горячее молоко и масло, перемешайте.'] },
+      { id: 7, title: 'Рис с овощами', emoji: '🍚', time: 30, servings: 3, ingredients: ['рис', 'морковь', 'лук', 'масло', 'соль'], steps: ['Отварите рис до готовности.', 'Нарежьте лук и морковь, обжарьте на масле.', 'Смешайте овощи с рисом, посолите.'] },
+      { id: 8, title: 'Сырники', emoji: '🥞', time: 25, servings: 3, ingredients: ['творог', 'яйца', 'мука', 'сахар', 'масло'], steps: ['Разомните творог и смешайте с яйцом и сахаром.', 'Добавьте муку, сформируйте небольшие сырники.', 'Жарьте на среднем огне с двух сторон до золотистой корочки.'] },
+      { id: 9, title: 'Курица с картошкой в духовке', emoji: '🍗', time: 60, servings: 4, ingredients: ['курица', 'картофель', 'лук', 'масло', 'соль'], steps: ['Нарежьте курицу и картофель крупными кусочками.', 'Смешайте с луком, маслом и солью.', 'Запекайте при 200 °C около 45–50 минут.'] },
+      { id: 10, title: 'Блины на молоке', emoji: '🫓', time: 35, servings: 4, ingredients: ['мука', 'молоко', 'яйца', 'сахар', 'соль'], steps: ['Взбейте яйца с сахаром и солью.', 'Добавьте молоко и муку, размешайте до однородности.', 'Жарьте тонкие блины на хорошо разогретой сковороде.'] }
+    ];
+    const QUICK_INGREDIENTS = ['яйца', 'молоко', 'сыр', 'картофель', 'лук', 'помидоры', 'огурцы', 'мука', 'масло', 'курица', 'творог', 'рис'];
+    let selectedIngredients = [];
+    let activeRecipe = null;
+
+    const tagsContainer = document.getElementById('tags-container');
+    const input = document.getElementById('ingredient-input');
+    const searchButton = document.getElementById('search-btn');
+    const resultsArea = document.getElementById('results-area');
+    const modalOverlay = document.getElementById('modal-overlay');
+
+    function normalize(value) {
+      return value.toLocaleLowerCase('ru').trim().replace(/ё/g, 'е');
+    }
+
+    function renderTags() {
+      tagsContainer.replaceChildren();
+      selectedIngredients.forEach((ingredient, index) => {
+        const tag = document.createElement('span');
+        tag.className = 'tag';
+        const label = document.createElement('span');
+        label.textContent = ingredient;
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.textContent = '×';
+        remove.setAttribute('aria-label', `Удалить ${ingredient}`);
+        remove.addEventListener('click', () => {
+          selectedIngredients.splice(index, 1);
+          renderTags();
+        });
+        tag.append(label, remove);
+        tagsContainer.append(tag);
+      });
+      searchButton.disabled = selectedIngredients.length === 0;
+      document.querySelectorAll('.quick-tag').forEach(button => {
+        const added = selectedIngredients.includes(button.dataset.value);
+        button.classList.toggle('added', added);
+        button.disabled = added;
+      });
+    }
+
+    function addIngredient(raw) {
+      const value = raw.trim().toLocaleLowerCase('ru');
+      if (!value || selectedIngredients.some(item => normalize(item) === normalize(value))) return;
+      selectedIngredients.push(value);
+      renderTags();
+      input.value = '';
+      input.focus();
+    }
+
+    function findRecipes() {
+      const results = RECIPES.map(recipe => {
+        const matched = recipe.ingredients.filter(item => selectedIngredients.some(selected => {
+          const a = normalize(item), b = normalize(selected);
+          return a === b || (b.length > 3 && a.includes(b)) || (a.length > 3 && b.includes(a));
+        }));
+        return { ...recipe, matched, missing: recipe.ingredients.filter(item => !matched.includes(item)), coverage: matched.length / recipe.ingredients.length };
+      }).filter(recipe => recipe.matched.length > 0)
+        .sort((a, b) => (a.missing.length - b.missing.length) || (b.coverage - a.coverage) || (b.matched.length - a.matched.length));
+      renderResults(results);
+    }
+
+    function makeEmptyState(title, message, emoji) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'empty-state';
+      const icon = document.createElement('div');
+      icon.className = 'empty-illustration';
+      icon.textContent = emoji;
+      const heading = document.createElement('h2');
+      heading.textContent = title;
+      const description = document.createElement('p');
+      description.textContent = message;
+      wrapper.append(icon, heading, description);
+      return wrapper;
+    }
+
+    function renderResults(results) {
+      resultsArea.replaceChildren();
+      if (!results.length) {
+        resultsArea.append(makeEmptyState('Пока ничего не нашлось', 'Добавьте другие продукты — возможно, появится новый вариант.', '😕'));
+        return;
+      }
+      const readyCount = results.filter(recipe => recipe.missing.length === 0).length;
+      const header = document.createElement('div');
+      header.className = 'results-header';
+      const heading = document.createElement('h2');
+      heading.textContent = `Подходящие рецепты: ${results.length}`;
+      const count = document.createElement('p');
+      count.className = 'results-count';
+      count.textContent = readyCount ? `Можно приготовить полностью: ${readyCount}` : 'Показываем варианты с подходящими продуктами';
+      header.append(heading, count);
+      const grid = document.createElement('div');
+      grid.className = 'recipes-grid';
+      results.forEach(recipe => {
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'recipe-card';
+        const image = document.createElement('span');
+        image.className = 'recipe-image';
+        image.textContent = recipe.emoji;
+        const badge = document.createElement('span');
+        badge.className = `match-badge${recipe.missing.length ? ' partial' : ''}`;
+        badge.textContent = recipe.missing.length ? `Есть ${recipe.matched.length} из ${recipe.ingredients.length}` : 'Всё есть';
+        image.append(badge);
+        const body = document.createElement('span');
+        body.className = 'recipe-body';
+        const title = document.createElement('span');
+        title.className = 'recipe-title';
+        title.textContent = recipe.title;
+        const meta = document.createElement('span');
+        meta.className = 'recipe-meta';
+        meta.textContent = `⏱ ${recipe.time} мин · 🍽 ${recipe.servings} порц.`;
+        const preview = document.createElement('span');
+        preview.className = 'ingredients-preview';
+        preview.textContent = recipe.missing.length ? `Есть: ${recipe.matched.join(', ')} · Нужно: ${recipe.missing.join(', ')}` : 'Все ингредиенты есть';
+        body.append(title, meta, preview);
+        card.append(image, body);
+        card.addEventListener('click', () => openModal(recipe));
+        grid.append(card);
+      });
+      resultsArea.append(header, grid);
+    }
+
+    function openModal(recipe) {
+      activeRecipe = recipe;
+      document.getElementById('modal-title').textContent = recipe.title;
+      const body = document.getElementById('modal-body');
+      body.replaceChildren();
+      const meta = document.createElement('p');
+      meta.className = 'modal-meta';
+      meta.textContent = `⏱ ${recipe.time} минут · 🍽 ${recipe.servings} порц.`;
+      const ingredientsHeading = document.createElement('h3');
+      ingredientsHeading.textContent = 'Ингредиенты';
+      const list = document.createElement('ul');
+      list.className = 'ingredients-list';
+      recipe.ingredients.forEach(ingredient => {
+        const item = document.createElement('li');
+        const present = recipe.matched.includes(ingredient);
+        const mark = document.createElement('span');
+        mark.className = present ? 'ing-check' : 'ing-cross';
+        mark.textContent = present ? '✓' : '−';
+        item.append(mark, document.createTextNode(ingredient));
+        list.append(item);
+      });
+      const stepsHeading = document.createElement('h3');
+      stepsHeading.textContent = 'Приготовление';
+      const steps = document.createElement('ol');
+      steps.className = 'steps-list';
+      recipe.steps.forEach(step => {
+        const item = document.createElement('li');
+        item.textContent = step;
+        steps.append(item);
+      });
+      body.append(meta, ingredientsHeading, list, stepsHeading, steps);
+      modalOverlay.classList.add('active');
+      modalOverlay.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('modal-open');
+      document.getElementById('modal-close').focus();
+    }
+
+    function closeModal() {
+      modalOverlay.classList.remove('active');
+      modalOverlay.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('modal-open');
+      activeRecipe = null;
+    }
+
+    QUICK_INGREDIENTS.forEach(ingredient => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'quick-tag';
+      button.textContent = ingredient;
+      button.dataset.value = ingredient;
+      button.addEventListener('click', () => addIngredient(ingredient));
+      document.getElementById('quick-tags').append(button);
+    });
+    document.getElementById('ingredient-form').addEventListener('submit', event => {
+      event.preventDefault();
+      addIngredient(input.value);
+    });
+    searchButton.addEventListener('click', findRecipes);
+    document.getElementById('clear-btn').addEventListener('click', () => {
+      selectedIngredients = [];
+      renderTags();
+      resultsArea.replaceChildren(makeEmptyState('Начнём с того, что есть дома', 'Добавьте продукты, и здесь появятся подходящие рецепты.', '🥗'));
+    });
+    document.getElementById('modal-close').addEventListener('click', closeModal);
+    modalOverlay.addEventListener('click', event => { if (event.target === modalOverlay) closeModal(); });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && activeRecipe) closeModal();
+    });
+    renderTags();
+  </script>
+</body>
+</html>
